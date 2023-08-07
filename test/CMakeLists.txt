@@ -11,11 +11,13 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
-add_executable(regex-machine_test source/regex-machine_test.cpp)
-target_link_libraries(regex-machine_test PRIVATE regex-machine::regex-machine)
-target_compile_features(regex-machine_test PRIVATE cxx_std_20)
+find_package(Catch2 REQUIRED)
+include(Catch)
 
-add_test(NAME regex-machine_test COMMAND regex-machine_test)
+add_executable(regex_machine_test source/regex_machine_test.cpp)
+target_link_libraries(regex_machine_test PRIVATE regex-machine::regex-machine Catch2::Catch2WithMain)
+target_compile_features(regex_machine_test PRIVATE cxx_std_20)
 
+catch_discover_tests(regex_machine_test)
 
 add_folders(Test)
