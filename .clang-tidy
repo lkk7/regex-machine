@@ -1,11 +1,13 @@
 ---
 Checks: "*,\
   -altera-*,\
+  -cppcoreguidelines-non-private-member-variables-in-classes,\
   -fuchsia-*,\
   -google-readability-todo,\
   -llvm-header-guard,\
   -llvm-include-order,\
   -llvmlibc-*,\
+  -misc-no-recursion,\
   -misc-non-private-member-variables-in-classes,\
   -modernize-use-nodiscard,\
   -modernize-use-trailing-return-type,\
