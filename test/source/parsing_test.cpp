@@ -13,10 +13,11 @@ using RegexMachine::Parser;
 using RegexMachine::Scanner;
 
 void REQUIRE_SCANNER_EQ(std::string&& input, std::string&& regex,
-                        size_t node_charcount) {
+                        size_t node_charcount, int paren_balance) {
   Scanner result{input};
   REQUIRE(result.regex == regex);
   REQUIRE(result.node_charcount == node_charcount);
+  REQUIRE(result.paren_balance == paren_balance);
 }
 
 void REQUIRE_NODE_EQ(Node result, Node::index left, Node::index right,
@@ -25,6 +26,10 @@ void REQUIRE_NODE_EQ(Node result, Node::index left, Node::index right,
   REQUIRE(result.right == right);
   REQUIRE(result.type == type);
   REQUIRE(result.character == character);
+}
+
+void REQUIRE_NODE_ERR(std::string&& input, std::string&& err_msg) {
+  REQUIRE(Parser{input}.parse().err_msg == err_msg);
 }
 
 TEST_CASE("Scanner::peek_token") {
@@ -67,23 +72,21 @@ TEST_CASE("Scanner::pop_token") {
 }
 
 TEST_CASE("Scanner::Scanner") {
-  REQUIRE_SCANNER_EQ("", "", 0);
-  REQUIRE_SCANNER_EQ("a", "a", 1);
-  REQUIRE_SCANNER_EQ("ab", "a.b", 3);
-  REQUIRE_SCANNER_EQ("abc", "a.b.c", 5);
-  REQUIRE_SCANNER_EQ("abcd", "a.b.c.d", 7);
-  REQUIRE_SCANNER_EQ("a|bc", "a|b.c", 5);
-  REQUIRE_SCANNER_EQ("ab|c", "a.b|c", 5);
-  REQUIRE_SCANNER_EQ("a*b*c?d|e", "a*.b*.c?.d|e", 12);
-  REQUIRE_SCANNER_EQ("(a?b*)(c)(def)?gh|i", "(a?.b*).(c).(d.e.f)?.g.h|i", 20);
+  REQUIRE_SCANNER_EQ("", "", 0, 0);
+  REQUIRE_SCANNER_EQ("a", "a", 1, 0);
+  REQUIRE_SCANNER_EQ("ab", "a.b", 3, 0);
+  REQUIRE_SCANNER_EQ("abc", "a.b.c", 5, 0);
+  REQUIRE_SCANNER_EQ("abcd", "a.b.c.d", 7, 0);
+  REQUIRE_SCANNER_EQ("a|bc", "a|b.c", 5, 0);
+  REQUIRE_SCANNER_EQ("ab|c", "a.b|c", 5, 0);
+  REQUIRE_SCANNER_EQ("a*b*c?d|e", "a*.b*.c?.d|e", 12, 0);
+  REQUIRE_SCANNER_EQ("(a?b*)(c)(def)?gh|iabc",
+                     "(a?.b*).(c).(d.e.f)?.g.h|i.a.b.c", 26, 0);
+  REQUIRE_SCANNER_EQ("(a", "(a", 1, 1);
+  REQUIRE_SCANNER_EQ("a)", "a)", 1, -1);
 }
 
 TEST_CASE("Parser::parse") {
-  SECTION("empty string") {
-    auto result = Parser{""}.parse().nodes;
-    REQUIRE(result.empty());
-  }
-
   SECTION("one character") {
     auto result = Parser{"1"}.parse().nodes;
     REQUIRE(result.size() == 1);
@@ -135,6 +138,32 @@ TEST_CASE("Parser::parse") {
     REQUIRE_NODE_EQ(result[3], 2, -1, Node::NodeType::ZERO_OR_MORE, '\0');
     REQUIRE_NODE_EQ(result[4], -1, -1, Node::NodeType::CHAR, '1');
     REQUIRE_NODE_EQ(result[5], 3, 4, Node::NodeType::OR, '\0');
+  }
+
+  SECTION("logically empty regexes") {
+    REQUIRE_NODE_ERR("", "empty regex");
+    REQUIRE_NODE_ERR("()", "empty regex");
+    REQUIRE_NODE_ERR("((()))", "empty regex");
+    // Here, the error is different because the initial scanner doesn't detect
+    // emptiness due to concatenation of two parenthesized nodes "().()".
+    // However, the parser detects the unexpected closing right after opening
+    // the parenthesis.
+    REQUIRE_NODE_ERR("()()", "unexpected character ')' with value 41");
+  }
+
+  SECTION("unbalanced parens") {
+    REQUIRE_NODE_ERR("(a", "unbalanced parens");
+    REQUIRE_NODE_ERR("a((", "unbalanced parens");
+    REQUIRE_NODE_ERR("((a", "unbalanced parens");
+    REQUIRE_NODE_ERR("(", "unbalanced parens");
+    REQUIRE_NODE_ERR("abc)", "unbalanced parens");
+  }
+
+  SECTION("unexpected characters") {
+    REQUIRE_NODE_ERR("\1", "unexpected character '\1' with value 1");
+    // Here, ')' is an unexpected character because the parser doesn't expect
+    // the closing parenthesis immediately.
+    REQUIRE_NODE_ERR("a(bcd())", "unexpected character ')' with value 41");
   }
 }
 

@@ -1,6 +1,7 @@
 ---
 Checks: "*,\
   -altera-*,\
+  -bugprone-exception-escape,\
   -cppcoreguidelines-non-private-member-variables-in-classes,\
   -fuchsia-*,\
   -google-readability-todo,\

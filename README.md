@@ -14,7 +14,8 @@ cmake --build build/dev-linux
 ```
 Then, to run tests:
 ```
-cmake --build build/dev-linux -t test
+cd build/dev-linux
+ctest --output-on-failure
 ```
 
 To run formatting checks as the CI does:
