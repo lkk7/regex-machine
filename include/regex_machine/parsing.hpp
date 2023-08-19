@@ -14,7 +14,7 @@ struct Node {
     CONCAT,
     OPTIONAL,
     OR,
-    ZERO_OR_MORE,
+    KLEENE_STAR,
   };
   bool operator==(const Node&) const = default;
 
@@ -159,7 +159,7 @@ class Parser {
 
     if (symbol == '*' || symbol == '?') {
       scanner.pop();
-      const Node::NodeType type = (symbol == '*') ? Node::NodeType::ZERO_OR_MORE
+      const Node::NodeType type = (symbol == '*') ? Node::NodeType::KLEENE_STAR
                                                   : Node::NodeType::OPTIONAL;
       return set_next_node(
           {.left = paren, .right = -1, .type = type, .character = '\0'},

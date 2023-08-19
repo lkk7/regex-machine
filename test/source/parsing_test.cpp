@@ -113,7 +113,7 @@ TEST_CASE("Parser::parse") {
     auto result = Parser{"1*"}.parse().nodes;
     REQUIRE(result.size() == 2);
     REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, '1');
-    REQUIRE_NODE_EQ(result[1], 0, -1, Node::NodeType::ZERO_OR_MORE, '\0');
+    REQUIRE_NODE_EQ(result[1], 0, -1, Node::NodeType::KLEENE_STAR, '\0');
   }
 
   SECTION("optional character") {
@@ -135,7 +135,7 @@ TEST_CASE("Parser::parse") {
     REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, 'a');
     REQUIRE_NODE_EQ(result[1], -1, -1, Node::NodeType::CHAR, 'b');
     REQUIRE_NODE_EQ(result[2], 0, 1, Node::NodeType::CONCAT, '\0');
-    REQUIRE_NODE_EQ(result[3], 2, -1, Node::NodeType::ZERO_OR_MORE, '\0');
+    REQUIRE_NODE_EQ(result[3], 2, -1, Node::NodeType::KLEENE_STAR, '\0');
     REQUIRE_NODE_EQ(result[4], -1, -1, Node::NodeType::CHAR, '1');
     REQUIRE_NODE_EQ(result[5], 3, 4, Node::NodeType::OR, '\0');
   }

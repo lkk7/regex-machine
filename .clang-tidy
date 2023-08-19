@@ -12,7 +12,8 @@ Checks: "*,\
   -misc-non-private-member-variables-in-classes,\
   -modernize-use-nodiscard,\
   -modernize-use-trailing-return-type,\
-  -readability-identifier-naming"
+  -readability-identifier-naming,\
+  -readability-identifier-length"
 WarningsAsErrors: ""
 CheckOptions:
   - key: "bugprone-argument-comment.StrictMode"
