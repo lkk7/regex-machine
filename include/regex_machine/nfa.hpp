@@ -15,7 +15,14 @@ class NFA {
   using state_pair = std::pair<state, state>;
   using trans_vec = std::vector<std::vector<char>>;
   enum class input : char { EPS = -1, NONE = 0 };
-  enum class err_state : char { OK, BAD_INIT, BAD_FINAL, BAD_FROM, BAD_TO };
+  enum class err_state : char {
+    OK,
+    BAD_PARSE,
+    BAD_INIT,
+    BAD_FINAL,
+    BAD_FROM,
+    BAD_TO
+  };
 
   explicit NFA(size_t size, state_pair start_and_end)
       : size{size},
@@ -105,13 +112,19 @@ class NFA {
   err_state error = err_state::OK;
 };
 
+inline NFA create_err(NFA::err_state error) {
+  NFA result{0, {0, 0}};
+  result.error = error;
+  return result;
+}
+
 inline NFA create_basic(char input) {
   NFA result(2, {0, 1});
   result.add_transition({0, 1}, input);
   return result;
 }
 
-inline NFA create_alter(NFA&& nfa1, NFA&& nfa2) {
+inline NFA create_or(NFA&& nfa1, NFA&& nfa2) {
   nfa1.shift_states(1);
   nfa2.shift_states(nfa1.size);
 
@@ -152,6 +165,32 @@ inline NFA create_kleene_star(NFA&& nfa) {
   nfa.initial_state = 0;
   nfa.final_state = nfa.size - 1;
   return nfa;
+}
+
+inline NFA create_from_parse(const Parser::ParseResult& parsed) {
+  if (!parsed.err_msg.empty()) [[unlikely]] {
+    return create_err(NFA::err_state::BAD_PARSE);
+  }
+
+  const auto recursive_build = [&](ParseNode::index i, auto& f) -> NFA {
+    const ParseNode node = parsed.nodes[static_cast<size_t>(i)];
+    const auto [left, right, type, character] = node;
+
+    switch (type) {
+      case ParseNode::NodeType::CHAR:
+        return create_basic(character);
+      case ParseNode::NodeType::OR:
+        return create_or(f(left, f), f(right, f));
+      case ParseNode::NodeType::CONCAT:
+        return create_concat(f(left, f), f(right, f));
+      case ParseNode::NodeType::KLEENE_STAR:
+        return create_kleene_star(f(left, f));
+      default:
+        return create_err(NFA::err_state::BAD_PARSE);
+    }
+  };
+
+  return recursive_build(parsed.first_node, recursive_build);
 }
 
 }  // namespace RegexMachine

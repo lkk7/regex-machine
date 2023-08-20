@@ -7,7 +7,7 @@
 
 namespace RegexMachine {
 
-struct Node {
+struct ParseNode {
   using index = int;
   enum class NodeType {
     CHAR,
@@ -16,7 +16,6 @@ struct Node {
     OR,
     KLEENE_STAR,
   };
-  bool operator==(const Node&) const = default;
 
   index left;
   index right;
@@ -80,12 +79,16 @@ class Scanner {
  */
 class Parser {
  public:
+  using index = int;
+  static_assert(std::is_same<index, ParseNode::index>::value);
+
   Parser() = delete;
   explicit Parser(const std::string& regex) : scanner{regex} {}
 
   struct ParseResult {
-    std::vector<Node> nodes;
+    std::vector<ParseNode> nodes;
     std::string err_msg;
+    index first_node;
   };
 
   ParseResult parse() {
@@ -97,19 +100,16 @@ class Parser {
     }
 
     ParseResult parse_result{
-        .nodes = std::vector<Node>(scanner.node_charcount),
+        .nodes = std::vector<ParseNode>(scanner.node_charcount),
         .err_msg = "",
     };
 
     // Launch parsing by calling the "outermost" grammar rule
-    get_or(parse_result);
+    parse_result.first_node = get_or(parse_result);
     return parse_result;
   }
 
  private:
-  using index = int;
-  static_assert(std::is_same<index, Node::index>::value);
-
   index get_or(ParseResult& result) {
     const index left = get_concat(result);
     if (left == -1) [[unlikely]] {
@@ -125,7 +125,7 @@ class Parser {
     }
     return set_next_node({.left = left,
                           .right = right,
-                          .type = Node::NodeType::OR,
+                          .type = ParseNode::NodeType::OR,
                           .character = '\0'},
                          result);
   }
@@ -145,7 +145,7 @@ class Parser {
     }
     return set_next_node({.left = left,
                           .right = right,
-                          .type = Node::NodeType::CONCAT,
+                          .type = ParseNode::NodeType::CONCAT,
                           .character = '\0'},
                          result);
   }
@@ -159,8 +159,9 @@ class Parser {
 
     if (symbol == '*' || symbol == '?') {
       scanner.pop();
-      const Node::NodeType type = (symbol == '*') ? Node::NodeType::KLEENE_STAR
-                                                  : Node::NodeType::OPTIONAL;
+      const ParseNode::NodeType type = (symbol == '*')
+                                           ? ParseNode::NodeType::KLEENE_STAR
+                                           : ParseNode::NodeType::OPTIONAL;
       return set_next_node(
           {.left = paren, .right = -1, .type = type, .character = '\0'},
           result);
@@ -200,13 +201,13 @@ class Parser {
         {
             .left = -1,
             .right = -1,
-            .type = Node::NodeType::CHAR,
+            .type = ParseNode::NodeType::CHAR,
             .character = scanner.pop(),
         },
         result);
   }
 
-  index set_next_node(Node&& node, ParseResult& result) {
+  index set_next_node(ParseNode&& node, ParseResult& result) {
     result.nodes[static_cast<size_t>(node_counter)] = node;
     return node_counter++;
   }

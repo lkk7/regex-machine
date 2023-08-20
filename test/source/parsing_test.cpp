@@ -8,7 +8,7 @@
 #include <catch2/catch_all.hpp>
 #include <string>
 
-using RegexMachine::Node;
+using RegexMachine::ParseNode;
 using RegexMachine::Parser;
 using RegexMachine::Scanner;
 
@@ -20,8 +20,9 @@ void REQUIRE_SCANNER_EQ(std::string&& input, std::string&& regex,
   REQUIRE(result.paren_balance == paren_balance);
 }
 
-void REQUIRE_NODE_EQ(Node result, Node::index left, Node::index right,
-                     Node::NodeType type, char character) {
+void REQUIRE_NODE_EQ(ParseNode result, ParseNode::index left,
+                     ParseNode::index right, ParseNode::NodeType type,
+                     char character) {
   REQUIRE(result.left == left);
   REQUIRE(result.right == right);
   REQUIRE(result.type == type);
@@ -88,56 +89,70 @@ TEST_CASE("Scanner::Scanner") {
 
 TEST_CASE("Parser::parse") {
   SECTION("one character") {
-    auto result = Parser{"1"}.parse().nodes;
+    auto parsed = Parser{"1"}.parse();
+    REQUIRE(parsed.first_node == 0);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 1);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, '1');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '1');
   }
 
   SECTION("single altered pair") {
-    auto result = Parser{"a|b"}.parse().nodes;
+    auto parsed = Parser{"a|b"}.parse();
+    REQUIRE(parsed.first_node == 2);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 3);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, 'a');
-    REQUIRE_NODE_EQ(result[1], -1, -1, Node::NodeType::CHAR, 'b');
-    REQUIRE_NODE_EQ(result[2], 0, 1, Node::NodeType::OR, '\0');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, 'a');
+    REQUIRE_NODE_EQ(result[1], -1, -1, ParseNode::NodeType::CHAR, 'b');
+    REQUIRE_NODE_EQ(result[2], 0, 1, ParseNode::NodeType::OR, '\0');
   }
 
   SECTION("single concatenated pair") {
-    auto result = Parser{"ab"}.parse().nodes;
+    auto parsed = Parser{"ab"}.parse();
+    REQUIRE(parsed.first_node == 2);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 3);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, 'a');
-    REQUIRE_NODE_EQ(result[1], -1, -1, Node::NodeType::CHAR, 'b');
-    REQUIRE_NODE_EQ(result[2], 0, 1, Node::NodeType::CONCAT, '\0');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, 'a');
+    REQUIRE_NODE_EQ(result[1], -1, -1, ParseNode::NodeType::CHAR, 'b');
+    REQUIRE_NODE_EQ(result[2], 0, 1, ParseNode::NodeType::CONCAT, '\0');
   }
 
   SECTION("zero or more of a single character") {
-    auto result = Parser{"1*"}.parse().nodes;
+    auto parsed = Parser{"1*"}.parse();
+    REQUIRE(parsed.first_node == 1);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 2);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, '1');
-    REQUIRE_NODE_EQ(result[1], 0, -1, Node::NodeType::KLEENE_STAR, '\0');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '1');
+    REQUIRE_NODE_EQ(result[1], 0, -1, ParseNode::NodeType::KLEENE_STAR, '\0');
   }
 
   SECTION("optional character") {
-    auto result = Parser{"1?"}.parse().nodes;
+    auto parsed = Parser{"1?"}.parse();
+    REQUIRE(parsed.first_node == 1);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 2);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, '1');
-    REQUIRE_NODE_EQ(result[1], 0, -1, Node::NodeType::OPTIONAL, '\0');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '1');
+    REQUIRE_NODE_EQ(result[1], 0, -1, ParseNode::NodeType::OPTIONAL, '\0');
   }
 
   SECTION("heavily parenthesized character") {
-    auto result = Parser{"(((1)))"}.parse().nodes;
+    auto parsed = Parser{"(((1)))"}.parse();
+    REQUIRE(parsed.first_node == 0);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 1);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, '1');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '1');
   }
 
   SECTION("parenthesises combined with other operators") {
-    auto result = Parser{"(ab)*|1"}.parse().nodes;
+    auto parsed = Parser{"(ab)*|1"}.parse();
+    REQUIRE(parsed.first_node == 5);
+    auto result = parsed.nodes;
     REQUIRE(result.size() == 6);
-    REQUIRE_NODE_EQ(result[0], -1, -1, Node::NodeType::CHAR, 'a');
-    REQUIRE_NODE_EQ(result[1], -1, -1, Node::NodeType::CHAR, 'b');
-    REQUIRE_NODE_EQ(result[2], 0, 1, Node::NodeType::CONCAT, '\0');
-    REQUIRE_NODE_EQ(result[3], 2, -1, Node::NodeType::KLEENE_STAR, '\0');
-    REQUIRE_NODE_EQ(result[4], -1, -1, Node::NodeType::CHAR, '1');
-    REQUIRE_NODE_EQ(result[5], 3, 4, Node::NodeType::OR, '\0');
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, 'a');
+    REQUIRE_NODE_EQ(result[1], -1, -1, ParseNode::NodeType::CHAR, 'b');
+    REQUIRE_NODE_EQ(result[2], 0, 1, ParseNode::NodeType::CONCAT, '\0');
+    REQUIRE_NODE_EQ(result[3], 2, -1, ParseNode::NodeType::KLEENE_STAR, '\0');
+    REQUIRE_NODE_EQ(result[4], -1, -1, ParseNode::NodeType::CHAR, '1');
+    REQUIRE_NODE_EQ(result[5], 3, 4, ParseNode::NodeType::OR, '\0');
   }
 
   SECTION("logically empty regexes") {

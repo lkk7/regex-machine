@@ -4,9 +4,12 @@
 #include <string>
 #include <vector>
 
-using RegexMachine::NFA, RegexMachine::create_basic, RegexMachine::create_alter,
+#include "regex_machine/parsing.hpp"
+
+using RegexMachine::NFA, RegexMachine::create_basic, RegexMachine::create_or,
     RegexMachine::create_basic, RegexMachine::create_concat,
-    RegexMachine::create_kleene_star;
+    RegexMachine::create_kleene_star, RegexMachine::create_from_parse,
+    RegexMachine::Parser;
 
 TEST_CASE("NFA::nfa") {
   SECTION("Basic NFA") {
@@ -128,7 +131,7 @@ TEST_CASE("NFA::create_basic") {
 }
 
 TEST_CASE("NFA::create_alter") {
-  NFA result = create_alter(create_basic('a'), create_basic('b'));
+  NFA result = create_or(create_basic('a'), create_basic('b'));
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 6);
   REQUIRE(result.initial_state == 0);
@@ -170,5 +173,23 @@ TEST_CASE("NFA::create_kleene_star") {
                                     {'\0', '\0', 'x', '\0'},
                                     {'\0', -1, '\0', -1},
                                     {'\0', '\0', '\0', '\0'},
+                                });
+}
+
+TEST_CASE("NFA::create_from_parse") {
+  const Parser::ParseResult parsed = Parser{"a|b"}.parse();
+  auto result = create_from_parse(parsed);
+  REQUIRE(result.error == NFA::err_state::OK);
+  REQUIRE(result.size == 6);
+  REQUIRE(result.initial_state == 0);
+  REQUIRE(result.final_state == 5);
+  REQUIRE(result.inputs == std::set<char>{'a', 'b'});
+  REQUIRE(result.transitions == NFA::trans_vec{
+                                    {'\0', -1, '\0', -1, '\0', '\0'},
+                                    {'\0', '\0', 'a', '\0', '\0', '\0'},
+                                    {'\0', '\0', '\0', '\0', '\0', -1},
+                                    {'\0', '\0', '\0', '\0', 'b', '\0'},
+                                    {'\0', '\0', '\0', '\0', '\0', -1},
+                                    {'\0', '\0', '\0', '\0', '\0', '\0'},
                                 });
 }
