@@ -50,7 +50,7 @@ TEST_CASE("NFA::add_transition") {
                                    {'\0', '\0', 'B'},
                                    {'C', '\0', '\0'},
                                });
-    REQUIRE(nfa.inputs == std::set<char>{'A', 'B', 'C'});
+    REQUIRE(nfa.inputs == std::unordered_set<char>{'A', 'B', 'C'});
     REQUIRE(nfa.error == NFA::err_state::OK);
   }
 
@@ -67,7 +67,7 @@ TEST_CASE("NFA::add_transition") {
   }
 }
 
-TEST_CASE("NFA::filL_states_from") {
+TEST_CASE("filL_states_from") {
   NFA nfa1{3, {0, 2}};
   NFA nfa2{2, {0, 1}};
   nfa2.add_transition({0, 1}, 'a');
@@ -78,10 +78,10 @@ TEST_CASE("NFA::filL_states_from") {
                                   {'b', '\0', '\0'},
                                   {'\0', '\0', '\0'},
                               });
-  REQUIRE(nfa1.inputs == std::set<char>{'a', 'b'});
+  REQUIRE(nfa1.inputs == std::unordered_set<char>{'a', 'b'});
 }
 
-TEST_CASE("NFA::shift_states") {
+TEST_CASE("shift_states") {
   NFA nfa{2, {0, 1}};
   nfa.add_transition({0, 1}, 'a');
   nfa.add_transition({1, 0}, 'b');
@@ -97,7 +97,7 @@ TEST_CASE("NFA::shift_states") {
                              });
 }
 
-TEST_CASE("NFA::push_empty_state") {
+TEST_CASE("push_empty_state") {
   NFA nfa{3, {0, 2}};
   nfa.push_empty_state();
   REQUIRE(nfa.size == 4);
@@ -109,34 +109,135 @@ TEST_CASE("NFA::push_empty_state") {
                              });
 }
 
-TEST_CASE("NFA::get_movable_states") {
+TEST_CASE("NFA::get_reachable_states") {
   NFA nfa{3, {0, 2}};
   nfa.add_transition({0, 1}, 'a');
   nfa.add_transition({1, 2}, 'b');
   nfa.add_transition({2, 1}, 'c');
-  REQUIRE(nfa.get_reachable_states({0, 1}, 'b') == std::set<NFA::state>{2});
+  REQUIRE(nfa.get_reachable_states({0, 1}, 'b') ==
+          std::unordered_set<NFA::state>{2});
 }
 
-TEST_CASE("NFA::create_basic") {
+TEST_CASE("NFA::eps_closure") {
+  using set = std::unordered_set<NFA::state>;
+
+  SECTION("ab") {
+    const NFA nfa = create_concat(create_basic('a'), create_basic('b'));
+
+    REQUIRE(nfa.eps_closure({0}) == set{0});
+    REQUIRE(nfa.eps_closure({1}) == set{1});
+    REQUIRE(nfa.eps_closure({2}) == set{2});
+    REQUIRE(nfa.eps_closure({0, 1, 2}) == set{0, 1, 2});
+  }
+
+  SECTION("(a|b)*a") {
+    NFA a_or_b_star =
+        create_kleene_star(create_or(create_basic('a'), create_basic('b')));
+    const NFA nfa = create_concat(std::move(a_or_b_star), create_basic('a'));
+
+    REQUIRE(nfa.eps_closure({0}) == set{0, 1, 2, 4, 7});
+    REQUIRE(nfa.eps_closure({1}) == set{1, 2, 4});
+    REQUIRE(nfa.eps_closure({2}) == set{2});
+    REQUIRE(nfa.eps_closure({3}) == set{1, 2, 3, 4, 6, 7});
+    REQUIRE(nfa.eps_closure({4}) == set{4});
+    REQUIRE(nfa.eps_closure({5}) == set{1, 2, 4, 5, 6, 7});
+    REQUIRE(nfa.eps_closure({6}) == set{1, 2, 4, 6, 7});
+    REQUIRE(nfa.eps_closure({7}) == set{7});
+    REQUIRE(nfa.eps_closure({8}) == set{8});
+    REQUIRE(nfa.eps_closure({}).empty());
+    REQUIRE(nfa.eps_closure({1, 7}) == set{1, 2, 4, 7});
+  }
+}
+
+TEST_CASE("NFA::match") {
+  SECTION("a") {
+    const NFA nfa = create_basic('a');
+    REQUIRE(nfa.match("a"));
+    REQUIRE(!nfa.match("b"));
+    REQUIRE(!nfa.match(""));
+  }
+
+  SECTION("ab") {
+    const NFA nfa = create_concat(create_basic('a'), create_basic('b'));
+    REQUIRE(nfa.match("ab"));
+    REQUIRE(!nfa.match("a"));
+    REQUIRE(!nfa.match("b"));
+    REQUIRE(!nfa.match("c"));
+  }
+
+  SECTION("a|b") {
+    const NFA nfa = create_or(create_basic('a'), create_basic('b'));
+    REQUIRE(nfa.match("a"));
+    REQUIRE(nfa.match("b"));
+    REQUIRE(!nfa.match("ab"));
+    REQUIRE(!nfa.match("ba"));
+    REQUIRE(!nfa.match("ba"));
+  }
+
+  SECTION("(xy)*") {
+    const NFA nfa =
+        create_kleene_star(create_concat(create_basic('x'), create_basic('y')));
+    REQUIRE(nfa.match("xy"));
+    REQUIRE(nfa.match("xyxy"));
+    REQUIRE(nfa.match("xyxyxyxy"));
+    REQUIRE(!nfa.match("xyxyx"));
+    REQUIRE(!nfa.match("xyxyy"));
+  }
+
+  SECTION("(x|y)*") {
+    const NFA nfa =
+        create_kleene_star(create_or(create_basic('x'), create_basic('y')));
+    REQUIRE(nfa.match(""));
+    REQUIRE(nfa.match("xy"));
+    REQUIRE(nfa.match("xyxy"));
+    REQUIRE(nfa.match("xyxyxyxy"));
+    REQUIRE(!nfa.match("xyxyz"));
+  }
+
+  SECTION("(a|b|c)(xyz)*") {
+    const NFA nfa =
+        create_concat(create_or(create_or(create_basic('a'), create_basic('b')),
+                                create_basic('c')),
+                      create_kleene_star(create_concat(
+                          create_concat(create_basic('x'), create_basic('y')),
+                          create_basic('z'))));
+    REQUIRE(nfa.match("a"));
+    REQUIRE(nfa.match("b"));
+    REQUIRE(nfa.match("c"));
+    REQUIRE(nfa.match("axyz"));
+    REQUIRE(nfa.match("bxyzxyz"));
+    REQUIRE(nfa.match("cxyzxyzxyz"));
+    REQUIRE(!nfa.match("ab"));
+    REQUIRE(!nfa.match(""));
+  }
+}
+
+TEST_CASE("create_err") {
+  NFA result = create_err(NFA::err_state::BAD_PARSE);
+  REQUIRE(result.error == NFA::err_state::BAD_PARSE);
+  REQUIRE(result.size == 0);
+}
+
+TEST_CASE("create_basic") {
   NFA result = create_basic('t');
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 2);
   REQUIRE(result.initial_state == 0);
   REQUIRE(result.final_state == 1);
-  REQUIRE(result.inputs == std::set<char>{'t'});
+  REQUIRE(result.inputs == std::unordered_set<char>{'t'});
   REQUIRE(result.transitions == NFA::trans_vec{
                                     {'\0', 't'},
                                     {'\0', '\0'},
                                 });
 }
 
-TEST_CASE("NFA::create_alter") {
+TEST_CASE("create_alter") {
   NFA result = create_or(create_basic('a'), create_basic('b'));
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 6);
   REQUIRE(result.initial_state == 0);
   REQUIRE(result.final_state == 5);
-  REQUIRE(result.inputs == std::set<char>{'a', 'b'});
+  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
   REQUIRE(result.transitions == NFA::trans_vec{
                                     {'\0', -1, '\0', -1, '\0', '\0'},
                                     {'\0', '\0', 'a', '\0', '\0', '\0'},
@@ -147,13 +248,13 @@ TEST_CASE("NFA::create_alter") {
                                 });
 }
 
-TEST_CASE("NFA::create_concat") {
+TEST_CASE("create_concat") {
   NFA result = create_concat(create_basic('a'), create_basic('b'));
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 3);
   REQUIRE(result.initial_state == 0);
   REQUIRE(result.final_state == 2);
-  REQUIRE(result.inputs == std::set<char>{'a', 'b'});
+  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
   REQUIRE(result.transitions == NFA::trans_vec{
                                     {'\0', 'a', '\0'},
                                     {'\0', '\0', 'b'},
@@ -161,13 +262,13 @@ TEST_CASE("NFA::create_concat") {
                                 });
 }
 
-TEST_CASE("NFA::create_kleene_star") {
+TEST_CASE("create_kleene_star") {
   NFA result = create_kleene_star(create_basic('x'));
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 4);
   REQUIRE(result.initial_state == 0);
   REQUIRE(result.final_state == 3);
-  REQUIRE(result.inputs == std::set<char>{'x'});
+  REQUIRE(result.inputs == std::unordered_set<char>{'x'});
   REQUIRE(result.transitions == NFA::trans_vec{
                                     {'\0', -1, '\0', -1},
                                     {'\0', '\0', 'x', '\0'},
@@ -176,14 +277,14 @@ TEST_CASE("NFA::create_kleene_star") {
                                 });
 }
 
-TEST_CASE("NFA::create_from_parse") {
+TEST_CASE("create_from_parse") {
   const Parser::ParseResult parsed = Parser{"a|b"}.parse();
   auto result = create_from_parse(parsed);
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 6);
   REQUIRE(result.initial_state == 0);
   REQUIRE(result.final_state == 5);
-  REQUIRE(result.inputs == std::set<char>{'a', 'b'});
+  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
   REQUIRE(result.transitions == NFA::trans_vec{
                                     {'\0', -1, '\0', -1, '\0', '\0'},
                                     {'\0', '\0', 'a', '\0', '\0', '\0'},

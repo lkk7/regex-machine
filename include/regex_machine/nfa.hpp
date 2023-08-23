@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iostream>
-#include <set>
 #include <stdexcept>
+#include <unordered_set>
 #include <vector>
 
 #include "parsing.hpp"
@@ -13,6 +13,7 @@ class NFA {
  public:
   using state = size_t;
   using state_pair = std::pair<state, state>;
+  using state_set = std::unordered_set<state>;
   using trans_vec = std::vector<std::vector<char>>;
   enum class input : char { EPS = -1, NONE = 0 };
   enum class err_state : char {
@@ -59,7 +60,6 @@ class NFA {
         transitions[i][j] = other.transitions[i][j];
       }
     }
-
     for (const char input : other.inputs) {
       inputs.insert(input);
     }
@@ -91,9 +91,8 @@ class NFA {
     transitions.emplace_back(++size, '\0');
   }
 
-  std::set<state> get_reachable_states(std::vector<state>&& states,
-                                       char input) {
-    std::set<state> result;
+  state_set get_reachable_states(const state_set& states, char input) const {
+    std::unordered_set<state> result;
     for (const state s : states) {
       for (size_t i = 0; i < transitions[s].size(); ++i) {
         if (transitions[s][i] == input) {
@@ -104,8 +103,55 @@ class NFA {
     return result;
   }
 
+  /**
+   * Compute the epsilon-closure of a set of NFA states.
+   *
+   * The epsilon-closure
+   * of a set of states is the set of states that can be reached from the input
+   * states by following epsilon transitions alone.
+   */
+  state_set eps_closure(state_set&& states) const {
+    if (states.empty()) {
+      return {};
+    }
+    std::vector<state> stack(states.begin(), states.end());
+    state_set result(states.begin(), states.end());
+
+    while (!stack.empty()) {
+      const state s = stack.back();
+      stack.pop_back();
+
+      for (size_t i = 0; i < transitions[s].size(); ++i) {
+        const char c = transitions[s][i];
+        if (c != static_cast<char>(NFA::input::EPS)) {
+          continue;
+        }
+        if (!result.contains(i)) {
+          result.emplace(i);
+          stack.push_back(i);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  bool match(const std::string& input) const {
+    state_set reachable = eps_closure({initial_state});
+    for (const char c : input) {
+      if (!inputs.contains(c)) {
+        return false;
+      }
+      reachable = eps_closure(get_reachable_states(reachable, c));
+      if (reachable.empty()) {
+        return false;
+      }
+    }
+    return reachable.contains(final_state);
+  }
+
   std::vector<std::vector<char>> transitions;
-  std::set<char> inputs;
+  std::unordered_set<char> inputs;
   size_t size;
   state initial_state;
   state final_state;
