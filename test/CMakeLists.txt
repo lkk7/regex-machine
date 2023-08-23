@@ -17,6 +17,7 @@ include(Catch)
 add_executable(regex_machine_test
   source/nfa_test.cpp
   source/parsing_test.cpp
+  source/regex_machine_test.cpp
 )
 target_link_libraries(regex_machine_test PRIVATE regex-machine::regex-machine Catch2::Catch2WithMain)
 target_compile_features(regex_machine_test PRIVATE cxx_std_20)

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace RegexMachine {
+namespace RM::Impl {
 
 struct ParseNode {
   using index = int;
@@ -216,4 +216,4 @@ class Parser {
   index node_counter = 0;
 };
 
-}  // namespace RegexMachine
+}  // namespace RM::Impl

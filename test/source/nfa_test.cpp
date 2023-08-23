@@ -1,15 +1,14 @@
-#include "regex_machine/nfa.hpp"
+#include "internal/nfa.hpp"
 
 #include <catch2/catch_all.hpp>
 #include <string>
 #include <vector>
 
-#include "regex_machine/parsing.hpp"
+#include "internal/parsing.hpp"
 
-using RegexMachine::NFA, RegexMachine::create_basic, RegexMachine::create_or,
-    RegexMachine::create_basic, RegexMachine::create_concat,
-    RegexMachine::create_kleene_star, RegexMachine::create_from_parse,
-    RegexMachine::Parser;
+using RM::Impl::NFA, RM::Impl::create_basic, RM::Impl::create_or,
+    RM::Impl::create_basic, RM::Impl::create_concat,
+    RM::Impl::create_kleene_star, RM::Impl::create_from_parse, RM::Impl::Parser;
 
 TEST_CASE("NFA::nfa") {
   SECTION("Basic NFA") {
@@ -67,7 +66,7 @@ TEST_CASE("NFA::add_transition") {
   }
 }
 
-TEST_CASE("filL_states_from") {
+TEST_CASE("fill_states_from") {
   NFA nfa1{3, {0, 2}};
   NFA nfa2{2, {0, 1}};
   nfa2.add_transition({0, 1}, 'a');
@@ -149,69 +148,6 @@ TEST_CASE("NFA::eps_closure") {
   }
 }
 
-TEST_CASE("NFA::match") {
-  SECTION("a") {
-    const NFA nfa = create_basic('a');
-    REQUIRE(nfa.match("a"));
-    REQUIRE(!nfa.match("b"));
-    REQUIRE(!nfa.match(""));
-  }
-
-  SECTION("ab") {
-    const NFA nfa = create_concat(create_basic('a'), create_basic('b'));
-    REQUIRE(nfa.match("ab"));
-    REQUIRE(!nfa.match("a"));
-    REQUIRE(!nfa.match("b"));
-    REQUIRE(!nfa.match("c"));
-  }
-
-  SECTION("a|b") {
-    const NFA nfa = create_or(create_basic('a'), create_basic('b'));
-    REQUIRE(nfa.match("a"));
-    REQUIRE(nfa.match("b"));
-    REQUIRE(!nfa.match("ab"));
-    REQUIRE(!nfa.match("ba"));
-    REQUIRE(!nfa.match("ba"));
-  }
-
-  SECTION("(xy)*") {
-    const NFA nfa =
-        create_kleene_star(create_concat(create_basic('x'), create_basic('y')));
-    REQUIRE(nfa.match("xy"));
-    REQUIRE(nfa.match("xyxy"));
-    REQUIRE(nfa.match("xyxyxyxy"));
-    REQUIRE(!nfa.match("xyxyx"));
-    REQUIRE(!nfa.match("xyxyy"));
-  }
-
-  SECTION("(x|y)*") {
-    const NFA nfa =
-        create_kleene_star(create_or(create_basic('x'), create_basic('y')));
-    REQUIRE(nfa.match(""));
-    REQUIRE(nfa.match("xy"));
-    REQUIRE(nfa.match("xyxy"));
-    REQUIRE(nfa.match("xyxyxyxy"));
-    REQUIRE(!nfa.match("xyxyz"));
-  }
-
-  SECTION("(a|b|c)(xyz)*") {
-    const NFA nfa =
-        create_concat(create_or(create_or(create_basic('a'), create_basic('b')),
-                                create_basic('c')),
-                      create_kleene_star(create_concat(
-                          create_concat(create_basic('x'), create_basic('y')),
-                          create_basic('z'))));
-    REQUIRE(nfa.match("a"));
-    REQUIRE(nfa.match("b"));
-    REQUIRE(nfa.match("c"));
-    REQUIRE(nfa.match("axyz"));
-    REQUIRE(nfa.match("bxyzxyz"));
-    REQUIRE(nfa.match("cxyzxyzxyz"));
-    REQUIRE(!nfa.match("ab"));
-    REQUIRE(!nfa.match(""));
-  }
-}
-
 TEST_CASE("create_err") {
   NFA result = create_err(NFA::err_state::BAD_PARSE);
   REQUIRE(result.error == NFA::err_state::BAD_PARSE);
@@ -278,8 +214,7 @@ TEST_CASE("create_kleene_star") {
 }
 
 TEST_CASE("create_from_parse") {
-  const Parser::ParseResult parsed = Parser{"a|b"}.parse();
-  auto result = create_from_parse(parsed);
+  auto result = create_from_parse(Parser{"a|b"}.parse());
   REQUIRE(result.error == NFA::err_state::OK);
   REQUIRE(result.size == 6);
   REQUIRE(result.initial_state == 0);

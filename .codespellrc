@@ -1,4 +1,4 @@
 [codespell]
 builtin = clear,rare,en-GB_to_en-US,names,informal,code
-skip = */.git,*/build,*/prefix
+skip = */.git,*/build,*/prefix,./test/source/regex_machine_test.cpp
 quiet-level = 2

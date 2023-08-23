@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <iostream>
 #include <stdexcept>
 #include <unordered_set>
@@ -7,7 +8,7 @@
 
 #include "parsing.hpp"
 
-namespace RegexMachine {
+namespace RM::Impl {
 
 class NFA {
  public:
@@ -17,7 +18,7 @@ class NFA {
   using trans_vec = std::vector<std::vector<char>>;
   enum class input : char { EPS = -1, NONE = 0 };
   enum class err_state : char {
-    OK,
+    OK = 0,
     BAD_PARSE,
     BAD_INIT,
     BAD_FINAL,
@@ -152,9 +153,9 @@ class NFA {
 
   std::vector<std::vector<char>> transitions;
   std::unordered_set<char> inputs;
-  size_t size;
-  state initial_state;
-  state final_state;
+  size_t size{};
+  state initial_state{};
+  state final_state{};
   err_state error = err_state::OK;
 };
 
@@ -213,7 +214,7 @@ inline NFA create_kleene_star(NFA&& nfa) {
   return nfa;
 }
 
-inline NFA create_from_parse(const Parser::ParseResult& parsed) {
+inline NFA create_from_parse(Parser::ParseResult&& parsed) {
   if (!parsed.err_msg.empty()) [[unlikely]] {
     return create_err(NFA::err_state::BAD_PARSE);
   }
@@ -239,4 +240,4 @@ inline NFA create_from_parse(const Parser::ParseResult& parsed) {
   return recursive_build(parsed.first_node, recursive_build);
 }
 
-}  // namespace RegexMachine
+}  // namespace RM::Impl

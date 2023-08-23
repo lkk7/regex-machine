@@ -1,16 +1,14 @@
 // NOLINTBEGIN(
 //   bugprone-easily-swappable-parameters,
-//   cppcoreguidelines-avoid-magic-numbers,
-//   readability-magic-numbers
 // )
-#include "regex_machine/parsing.hpp"
+#include "internal/parsing.hpp"
 
 #include <catch2/catch_all.hpp>
 #include <string>
 
-using RegexMachine::ParseNode;
-using RegexMachine::Parser;
-using RegexMachine::Scanner;
+using RM::Impl::ParseNode;
+using RM::Impl::Parser;
+using RM::Impl::Scanner;
 
 void REQUIRE_SCANNER_EQ(std::string&& input, std::string&& regex,
                         size_t node_charcount, int paren_balance) {
@@ -184,6 +182,4 @@ TEST_CASE("Parser::parse") {
 
 // NOLINTEND(
 //   bugprone-easily-swappable-parameters,
-//   cppcoreguidelines-avoid-magic-numbers,
-//   readability-magic-numbers
 // )
