@@ -176,27 +176,24 @@ class Parser {
     }
 
     scanner.pop();
+    if (scanner.peek() == ')') [[unlikely]] {
+      result.err_msg = "empty () expression";
+      return -1;
+    }
     const index or_expr = get_or(result);
     if (or_expr == -1) [[unlikely]] {
       return -1;
     }
-    if (scanner.pop() != ')') [[unlikely]] {
-      result.err_msg = "unterminated left parenthesis";
+    if (const char c = scanner.pop(); c != ')') [[unlikely]] {
+      std::stringstream strs;
+      strs << "')' expected, got char with code " << static_cast<int>(c);
+      result.err_msg = strs.str();
       return -1;
     }
     return or_expr;
   }
 
   index get_char(ParseResult& result) {
-    const char token = scanner.peek();
-
-    if (!static_cast<bool>(std::isalnum(token)) && token != '\0') [[unlikely]] {
-      std::stringstream strs;
-      strs << "unexpected character '" << token << "' with value "
-           << static_cast<int>(token);
-      result.err_msg = strs.str();
-      return -1;
-    }
     return set_next_node(
         {
             .left = -1,

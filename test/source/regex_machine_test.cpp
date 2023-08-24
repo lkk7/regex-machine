@@ -58,4 +58,30 @@ TEST_CASE("Matcher::match") {
     REQUIRE(!matcher.match("ab"));
     REQUIRE(!matcher.match(""));
   }
+
+  SECTION("(a|b)(x|y)") {
+    Matcher matcher{"(a|b)(x|y)*"};
+    REQUIRE(matcher.match("ax"));
+    REQUIRE(matcher.match("ay"));
+    REQUIRE(matcher.match("bx"));
+    REQUIRE(matcher.match("by"));
+    REQUIRE(!matcher.match("ab"));
+    REQUIRE(!matcher.match("xy"));
+    REQUIRE(!matcher.match(""));
+    REQUIRE(1 == 1);
+  }
+
+  SECTION("errors") {
+    // Errors are tested in detail in parsing_test.cpp
+    Matcher matcher{"(a"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{"()"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{"(())"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{"()()"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{""};
+    REQUIRE(!matcher.err_msg.empty());
+  }
 }

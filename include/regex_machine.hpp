@@ -10,6 +10,7 @@ namespace RM {
 class Matcher {
  public:
   explicit Matcher(std::string&& input) : nfa{create_nfa(std::move(input))} {}
+
   bool match(std::string&& input) {
     if (!err_msg.empty()) {
       return false;

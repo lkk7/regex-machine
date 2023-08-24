@@ -156,12 +156,7 @@ TEST_CASE("Parser::parse") {
   SECTION("logically empty regexes") {
     REQUIRE_NODE_ERR("", "empty regex");
     REQUIRE_NODE_ERR("()", "empty regex");
-    REQUIRE_NODE_ERR("((()))", "empty regex");
-    // Here, the error is different because the initial scanner doesn't detect
-    // emptiness due to concatenation of two parenthesized nodes "().()".
-    // However, the parser detects the unexpected closing right after opening
-    // the parenthesis.
-    REQUIRE_NODE_ERR("()()", "unexpected character ')' with value 41");
+    REQUIRE_NODE_ERR("(())", "empty regex");
   }
 
   SECTION("unbalanced parens") {
@@ -172,11 +167,14 @@ TEST_CASE("Parser::parse") {
     REQUIRE_NODE_ERR("abc)", "unbalanced parens");
   }
 
-  SECTION("unexpected characters") {
-    REQUIRE_NODE_ERR("\1", "unexpected character '\1' with value 1");
-    // Here, ')' is an unexpected character because the parser doesn't expect
-    // the closing parenthesis immediately.
-    REQUIRE_NODE_ERR("a(bcd())", "unexpected character ')' with value 41");
+  SECTION("empty () expression") {
+    // The parser does not detect a logically empty regex because of
+    // concatenation of two nodes (it's seen as "().()"), but it detects empty
+    // parentheses.
+    REQUIRE_NODE_ERR("()()", "empty () expression");
+    REQUIRE_NODE_ERR("(()())", "empty () expression");
+    REQUIRE_NODE_ERR("()(())", "empty () expression");
+    REQUIRE_NODE_ERR("a(bcd())", "empty () expression");
   }
 }
 
