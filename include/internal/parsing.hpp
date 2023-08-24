@@ -29,6 +29,7 @@ class Scanner {
     if (input.empty()) {
       return;
     }
+
     node_charcount = input.size();
     auto is_paren = [this](char chr) {
       if (chr == '(') {
@@ -42,13 +43,15 @@ class Scanner {
       return 0U;
     };
 
-    for (auto it = input.cbegin(); it != input.cend() - 1; ++it) {
-      regex.push_back(*it);
-      node_charcount -= is_paren(*it);
-      const bool is_left_concatable = static_cast<bool>(std::isalnum(*it)) ||
-                                      *it == ')' || *it == '*' || *it == '?';
-      const bool is_right_concatable = *(it + 1) != ')' && *(it + 1) != '|' &&
-                                       *(it + 1) != '*' && *(it + 1) != '?';
+    for (size_t i = 0; i < input.size() - 1; ++i) {
+      char c = input[i];
+      char next = input[i + 1];
+      regex.push_back(c);
+      node_charcount -= is_paren(c);
+      const bool is_left_concatable = static_cast<bool>(std::isalnum(c)) ||
+                                      c == ')' || c == '*' || c == '?';
+      const bool is_right_concatable =
+          next != ')' && next != '|' && next != '*' && next != '?';
       if (is_left_concatable && is_right_concatable) {
         regex.push_back('.');
         ++node_charcount;
@@ -61,11 +64,11 @@ class Scanner {
   char peek() const { return index >= regex.size() ? '\0' : regex[index]; }
   char pop() { return index >= regex.size() ? '\0' : regex[index++]; }
 
-  std::string regex;
   size_t node_charcount = 0;
   int paren_balance = 0;
 
  private:
+  std::string regex;
   size_t index = 0;
 };
 
