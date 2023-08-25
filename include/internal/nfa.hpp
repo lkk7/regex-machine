@@ -240,4 +240,16 @@ inline NFA create_from_parse(Parser::ParseResult&& parsed) {
   return recursive_build(parsed.first_node, recursive_build);
 }
 
+inline NFA create_from_str(std::string&& str, std::string& err_msg) {
+  Parser::ParseResult parsed = Impl::Parser{str}.parse();
+  if (!parsed.err_msg.empty()) {
+    err_msg = parsed.err_msg;
+  }
+  Impl::NFA result = Impl::create_from_parse(std::move(parsed));
+  if (result.error != Impl::NFA::err_state::OK && err_msg.empty()) {
+    err_msg = std::to_string(static_cast<int>(result.error));
+  }
+  return result;
+}
+
 }  // namespace RM::Impl

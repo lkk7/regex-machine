@@ -6,14 +6,14 @@ using RM::Matcher;
 
 TEST_CASE("Matcher::match") {
   SECTION("a") {
-    Matcher matcher{"a"};
+    const Matcher matcher{"a"};
     REQUIRE(matcher.match("a"));
     REQUIRE(!matcher.match("b"));
     REQUIRE(!matcher.match(""));
   }
 
   SECTION("ab") {
-    Matcher matcher{"ab"};
+    const Matcher matcher{"ab"};
     REQUIRE(matcher.match("ab"));
     REQUIRE(!matcher.match("a"));
     REQUIRE(!matcher.match("b"));
@@ -21,7 +21,7 @@ TEST_CASE("Matcher::match") {
   }
 
   SECTION("a|b") {
-    Matcher matcher{"a|b"};
+    const Matcher matcher{"a|b"};
     REQUIRE(matcher.match("a"));
     REQUIRE(matcher.match("b"));
     REQUIRE(!matcher.match("ab"));
@@ -30,7 +30,7 @@ TEST_CASE("Matcher::match") {
   }
 
   SECTION("(xy)*") {
-    Matcher matcher{"(xy)*"};
+    const Matcher matcher{"(xy)*"};
     REQUIRE(matcher.match("xy"));
     REQUIRE(matcher.match("xyxy"));
     REQUIRE(matcher.match("xyxyxyxy"));
@@ -39,7 +39,7 @@ TEST_CASE("Matcher::match") {
   }
 
   SECTION("(x|y)*") {
-    Matcher matcher{"(x|y)*"};
+    const Matcher matcher{"(x|y)*"};
     REQUIRE(matcher.match(""));
     REQUIRE(matcher.match("xy"));
     REQUIRE(matcher.match("xyxy"));
@@ -48,7 +48,7 @@ TEST_CASE("Matcher::match") {
   }
 
   SECTION("(a|b|c)(xyz)*") {
-    Matcher matcher{"(a|b|c)(xyz)*"};
+    const Matcher matcher{"(a|b|c)(xyz)*"};
     REQUIRE(matcher.match("a"));
     REQUIRE(matcher.match("b"));
     REQUIRE(matcher.match("c"));
@@ -60,7 +60,7 @@ TEST_CASE("Matcher::match") {
   }
 
   SECTION("(a|b)(x|y)") {
-    Matcher matcher{"(a|b)(x|y)*"};
+    const Matcher matcher{"(a|b)(x|y)*"};
     REQUIRE(matcher.match("ax"));
     REQUIRE(matcher.match("ay"));
     REQUIRE(matcher.match("bx"));

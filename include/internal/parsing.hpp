@@ -7,22 +7,11 @@
 
 namespace RM::Impl {
 
-struct ParseNode {
-  using index = int;
-  enum class NodeType {
-    CHAR,
-    CONCAT,
-    OPTIONAL,
-    OR,
-    KLEENE_STAR,
-  };
-
-  index left;
-  index right;
-  NodeType type;
-  char character;
-};
-
+/** Reader and preprocessor of regex input.
+ * Adds concatenation: "abc" -> "a.b.c".
+ * Checks for problems such as no meaningful content: "(()())"
+ * or unbalanced parentheses: "((ab)".
+ */
 class Scanner {
  public:
   explicit Scanner(const std::string& input) {
@@ -44,8 +33,8 @@ class Scanner {
     };
 
     for (size_t i = 0; i < input.size() - 1; ++i) {
-      char c = input[i];
-      char next = input[i + 1];
+      const char c = input[i];
+      const char next = input[i + 1];
       regex.push_back(c);
       node_charcount -= is_paren(c);
       const bool is_left_concatable = static_cast<bool>(std::isalnum(c)) ||
@@ -66,13 +55,35 @@ class Scanner {
 
   size_t node_charcount = 0;
   int paren_balance = 0;
+  std::string regex;
 
  private:
-  std::string regex;
   size_t index = 0;
 };
 
+/** A binary tree node with indices instead of pointers.
+ * Describes a character or a binary/unary operator.
+ * When an index is meaningless (e.g. right index for unary "a*"), it's -1.
+ * When a character is meaningless (so, for every operator), it's '\0'.
+ */
+struct ParseNode {
+  using index = int;
+  enum class NodeType {
+    CHAR,
+    CONCAT,
+    OPTIONAL,
+    OR,
+    KLEENE_STAR,
+  };
+
+  index left;
+  index right;
+  NodeType type;
+  char character;
+};
+
 /** A Parser that accepts any regex string.
+ *
  * The EBNF-style representation of the grammar is:
  * <or> ::= <concat> ("|" <or>)?
  * <concat> ::= <repeat> ("." <concat>)?
@@ -84,15 +95,16 @@ class Parser {
  public:
   using index = int;
   static_assert(std::is_same<index, ParseNode::index>::value);
-
-  Parser() = delete;
-  explicit Parser(const std::string& regex) : scanner{regex} {}
-
+  // The nodes are stored in a vector and point to each other via indices for
+  // memory contiguity and safety.
   struct ParseResult {
     std::vector<ParseNode> nodes;
     std::string err_msg;
     index first_node;
   };
+
+  Parser() = delete;
+  explicit Parser(const std::string& regex) : scanner{regex} {}
 
   ParseResult parse() {
     if (scanner.paren_balance != 0) {
