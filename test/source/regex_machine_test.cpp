@@ -7,6 +7,7 @@ using RM::Matcher;
 TEST_CASE("Matcher::match") {
   SECTION("a") {
     const Matcher matcher{"a"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("a"));
     REQUIRE(!matcher.match("b"));
     REQUIRE(!matcher.match(""));
@@ -14,6 +15,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("ab") {
     const Matcher matcher{"ab"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("ab"));
     REQUIRE(!matcher.match("a"));
     REQUIRE(!matcher.match("b"));
@@ -22,6 +24,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("a|b") {
     const Matcher matcher{"a|b"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("a"));
     REQUIRE(matcher.match("b"));
     REQUIRE(!matcher.match("ab"));
@@ -31,6 +34,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("(xy)*") {
     const Matcher matcher{"(xy)*"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("xy"));
     REQUIRE(matcher.match("xyxy"));
     REQUIRE(matcher.match("xyxyxyxy"));
@@ -40,6 +44,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("(x|y)*") {
     const Matcher matcher{"(x|y)*"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match(""));
     REQUIRE(matcher.match("xy"));
     REQUIRE(matcher.match("xyxy"));
@@ -49,6 +54,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("(a|b|c)(xyz)*") {
     const Matcher matcher{"(a|b|c)(xyz)*"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("a"));
     REQUIRE(matcher.match("b"));
     REQUIRE(matcher.match("c"));
@@ -61,6 +67,7 @@ TEST_CASE("Matcher::match") {
 
   SECTION("(a|b)(x|y)") {
     const Matcher matcher{"(a|b)(x|y)*"};
+    REQUIRE(matcher.err_msg.empty());
     REQUIRE(matcher.match("ax"));
     REQUIRE(matcher.match("ay"));
     REQUIRE(matcher.match("bx"));
@@ -68,7 +75,47 @@ TEST_CASE("Matcher::match") {
     REQUIRE(!matcher.match("ab"));
     REQUIRE(!matcher.match("xy"));
     REQUIRE(!matcher.match(""));
-    REQUIRE(1 == 1);
+  }
+
+  SECTION("a?") {
+    const Matcher matcher{"a?"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match(""));
+    REQUIRE(matcher.match("a"));
+    REQUIRE(!matcher.match("b"));
+    REQUIRE(!matcher.match("aa"));
+  }
+
+  SECTION("(ab)?c*") {
+    const Matcher matcher{"(ab)?c*"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match(""));
+    REQUIRE(matcher.match("c"));
+    REQUIRE(matcher.match("cc"));
+    REQUIRE(matcher.match("abccccc"));
+    REQUIRE(!matcher.match("aba"));
+    REQUIRE(!matcher.match("d"));
+  }
+
+  SECTION("a+") {
+    const Matcher matcher{"a+"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("a"));
+    REQUIRE(matcher.match("aa"));
+    REQUIRE(!matcher.match(""));
+    REQUIRE(!matcher.match("b"));
+    REQUIRE(!matcher.match("ba"));
+  }
+
+  SECTION("(ab)+c*") {
+    const Matcher matcher{"(ab)+c*"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("ab"));
+    REQUIRE(matcher.match("abc"));
+    REQUIRE(matcher.match("ababccccc"));
+    REQUIRE(!matcher.match(""));
+    REQUIRE(!matcher.match("ababd"));
+    REQUIRE(!matcher.match("aba"));
   }
 
   SECTION("errors") {

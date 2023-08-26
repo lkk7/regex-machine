@@ -1,14 +1,12 @@
 #include "internal/nfa.hpp"
 
 #include <catch2/catch_all.hpp>
-#include <string>
-#include <vector>
 
-#include "internal/parsing.hpp"
+#include "internal/nfa_creation.hpp"
+#include "internal/parser.hpp"
 
-using RM::Impl::NFA, RM::Impl::create_basic, RM::Impl::create_or,
-    RM::Impl::create_basic, RM::Impl::create_concat,
-    RM::Impl::create_kleene_star, RM::Impl::create_from_parse, RM::Impl::Parser;
+using RM::Impl::NFA, RM::Impl::create_basic, RM::Impl::create_concat,
+    RM::Impl::create_kleene_star, RM::Impl::create_basic, RM::Impl::create_or;
 
 TEST_CASE("NFA::nfa") {
   SECTION("Basic NFA") {
@@ -146,86 +144,4 @@ TEST_CASE("NFA::eps_closure") {
     REQUIRE(nfa.eps_closure({}).empty());
     REQUIRE(nfa.eps_closure({1, 7}) == set{1, 2, 4, 7});
   }
-}
-
-TEST_CASE("create_err") {
-  NFA result = create_err(NFA::err_state::BAD_PARSE);
-  REQUIRE(result.error == NFA::err_state::BAD_PARSE);
-  REQUIRE(result.size == 0);
-}
-
-TEST_CASE("create_basic") {
-  NFA result = create_basic('t');
-  REQUIRE(result.error == NFA::err_state::OK);
-  REQUIRE(result.size == 2);
-  REQUIRE(result.initial_state == 0);
-  REQUIRE(result.final_state == 1);
-  REQUIRE(result.inputs == std::unordered_set<char>{'t'});
-  REQUIRE(result.transitions == NFA::trans_vec{
-                                    {'\0', 't'},
-                                    {'\0', '\0'},
-                                });
-}
-
-TEST_CASE("create_alter") {
-  NFA result = create_or(create_basic('a'), create_basic('b'));
-  REQUIRE(result.error == NFA::err_state::OK);
-  REQUIRE(result.size == 6);
-  REQUIRE(result.initial_state == 0);
-  REQUIRE(result.final_state == 5);
-  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
-  REQUIRE(result.transitions == NFA::trans_vec{
-                                    {'\0', -1, '\0', -1, '\0', '\0'},
-                                    {'\0', '\0', 'a', '\0', '\0', '\0'},
-                                    {'\0', '\0', '\0', '\0', '\0', -1},
-                                    {'\0', '\0', '\0', '\0', 'b', '\0'},
-                                    {'\0', '\0', '\0', '\0', '\0', -1},
-                                    {'\0', '\0', '\0', '\0', '\0', '\0'},
-                                });
-}
-
-TEST_CASE("create_concat") {
-  NFA result = create_concat(create_basic('a'), create_basic('b'));
-  REQUIRE(result.error == NFA::err_state::OK);
-  REQUIRE(result.size == 3);
-  REQUIRE(result.initial_state == 0);
-  REQUIRE(result.final_state == 2);
-  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
-  REQUIRE(result.transitions == NFA::trans_vec{
-                                    {'\0', 'a', '\0'},
-                                    {'\0', '\0', 'b'},
-                                    {'\0', '\0', '\0'},
-                                });
-}
-
-TEST_CASE("create_kleene_star") {
-  NFA result = create_kleene_star(create_basic('x'));
-  REQUIRE(result.error == NFA::err_state::OK);
-  REQUIRE(result.size == 4);
-  REQUIRE(result.initial_state == 0);
-  REQUIRE(result.final_state == 3);
-  REQUIRE(result.inputs == std::unordered_set<char>{'x'});
-  REQUIRE(result.transitions == NFA::trans_vec{
-                                    {'\0', -1, '\0', -1},
-                                    {'\0', '\0', 'x', '\0'},
-                                    {'\0', -1, '\0', -1},
-                                    {'\0', '\0', '\0', '\0'},
-                                });
-}
-
-TEST_CASE("create_from_parse") {
-  auto result = create_from_parse(Parser{"a|b"}.parse());
-  REQUIRE(result.error == NFA::err_state::OK);
-  REQUIRE(result.size == 6);
-  REQUIRE(result.initial_state == 0);
-  REQUIRE(result.final_state == 5);
-  REQUIRE(result.inputs == std::unordered_set<char>{'a', 'b'});
-  REQUIRE(result.transitions == NFA::trans_vec{
-                                    {'\0', -1, '\0', -1, '\0', '\0'},
-                                    {'\0', '\0', 'a', '\0', '\0', '\0'},
-                                    {'\0', '\0', '\0', '\0', '\0', -1},
-                                    {'\0', '\0', '\0', '\0', 'b', '\0'},
-                                    {'\0', '\0', '\0', '\0', '\0', -1},
-                                    {'\0', '\0', '\0', '\0', '\0', '\0'},
-                                });
 }

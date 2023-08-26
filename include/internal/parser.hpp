@@ -1,65 +1,11 @@
 #pragma once
 
-#include <cctype>
-#include <sstream>
 #include <string>
 #include <vector>
 
+#include "scanner.hpp"
+
 namespace RM::Impl {
-
-/** Reader and preprocessor of regex input.
- * Adds concatenation: "abc" -> "a.b.c".
- * Checks for problems such as no meaningful content: "(()())"
- * or unbalanced parentheses: "((ab)".
- */
-class Scanner {
- public:
-  explicit Scanner(const std::string& input) {
-    if (input.empty()) {
-      return;
-    }
-
-    node_charcount = input.size();
-    auto is_paren = [this](char chr) {
-      if (chr == '(') {
-        ++paren_balance;
-        return 1U;
-      }
-      if (chr == ')') {
-        --paren_balance;
-        return 1U;
-      }
-      return 0U;
-    };
-
-    for (size_t i = 0; i < input.size() - 1; ++i) {
-      const char c = input[i];
-      const char next = input[i + 1];
-      regex.push_back(c);
-      node_charcount -= is_paren(c);
-      const bool is_left_concatable = static_cast<bool>(std::isalnum(c)) ||
-                                      c == ')' || c == '*' || c == '?';
-      const bool is_right_concatable =
-          next != ')' && next != '|' && next != '*' && next != '?';
-      if (is_left_concatable && is_right_concatable) {
-        regex.push_back('.');
-        ++node_charcount;
-      }
-    }
-    node_charcount -= is_paren(*(input.cend() - 1));
-    regex.push_back(*(input.cend() - 1));
-  }
-
-  char peek() const { return index >= regex.size() ? '\0' : regex[index]; }
-  char pop() { return index >= regex.size() ? '\0' : regex[index++]; }
-
-  size_t node_charcount = 0;
-  int paren_balance = 0;
-  std::string regex;
-
- private:
-  size_t index = 0;
-};
 
 /** A binary tree node with indices instead of pointers.
  * Describes a character or a binary/unary operator.
@@ -71,9 +17,10 @@ struct ParseNode {
   enum class NodeType {
     CHAR,
     CONCAT,
+    KLEENE_STAR,
+    ONE_OR_MORE,
     OPTIONAL,
     OR,
-    KLEENE_STAR,
   };
 
   index left;
@@ -87,7 +34,7 @@ struct ParseNode {
  * The EBNF-style representation of the grammar is:
  * <or> ::= <concat> ("|" <or>)?
  * <concat> ::= <repeat> ("." <concat>)?
- * <repeat> ::= <paren> ("*" | "?")?
+ * <repeat> ::= <paren> ("*" | "?" | "+")?
  * <paren> ::= <char> | "(" <or> ")"
  * <char> ::= (any alphanumeric char)
  */
@@ -166,23 +113,26 @@ class Parser {
   }
 
   index get_repeat(ParseResult& result) {
+    using NodeType = ParseNode::NodeType;
     const index paren = get_paren(result);
     if (paren == -1) [[unlikely]] {
       return -1;
     }
+
     const char symbol = scanner.peek();
-
-    if (symbol == '*' || symbol == '?') {
-      scanner.pop();
-      const ParseNode::NodeType type = (symbol == '*')
-                                           ? ParseNode::NodeType::KLEENE_STAR
-                                           : ParseNode::NodeType::OPTIONAL;
-      return set_next_node(
-          {.left = paren, .right = -1, .type = type, .character = '\0'},
-          result);
+    if (symbol != '*' && symbol != '?' && symbol != '+') {
+      return paren;
     }
-
-    return paren;
+    scanner.pop();
+    NodeType type = NodeType::ONE_OR_MORE;
+    if (symbol == '*') {
+      type = NodeType::KLEENE_STAR;
+    }
+    if (symbol == '?') {
+      type = NodeType::OPTIONAL;
+    }
+    return set_next_node(
+        {.left = paren, .right = -1, .type = type, .character = '\0'}, result);
   }
 
   index get_paren(ParseResult& result) {
@@ -200,9 +150,8 @@ class Parser {
       return -1;
     }
     if (const char c = scanner.pop(); c != ')') [[unlikely]] {
-      std::stringstream strs;
-      strs << "')' expected, got char with code " << static_cast<int>(c);
-      result.err_msg = strs.str();
+      result.err_msg = "')' expected, got char with code" +
+                       std::to_string(static_cast<int>(c));
       return -1;
     }
     return or_expr;

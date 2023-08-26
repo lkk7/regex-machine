@@ -3,7 +3,8 @@
 #include <string>
 
 #include "internal/nfa.hpp"
-#include "internal/parsing.hpp"
+#include "internal/nfa_creation.hpp"
+#include "internal/parser.hpp"
 
 namespace RM {
 
