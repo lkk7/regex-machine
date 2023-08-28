@@ -26,8 +26,8 @@ class NFA {
     BAD_TO
   };
 
-  explicit NFA(size_t size, state_pair start_and_end)
-      : size{size},
+  explicit NFA(size_t nfa_size, state_pair start_and_end)
+      : size{nfa_size},
         initial_state{start_and_end.first},
         final_state{start_and_end.second} {
     if (initial_state >= size) [[unlikely]] {
@@ -61,8 +61,8 @@ class NFA {
         transitions[i][j] = other.transitions[i][j];
       }
     }
-    for (const char input : other.inputs) {
-      inputs.insert(input);
+    for (const char in : other.inputs) {
+      inputs.insert(in);
     }
   }
 
@@ -92,11 +92,11 @@ class NFA {
     transitions.emplace_back(++size, '\0');
   }
 
-  state_set get_reachable_states(const state_set& states, char input) const {
+  state_set get_reachable_states(const state_set& states, char c) const {
     std::unordered_set<state> result;
     for (const state s : states) {
       for (size_t i = 0; i < transitions[s].size(); ++i) {
-        if (transitions[s][i] == input) {
+        if (transitions[s][i] == c) {
           result.insert(i);
         }
       }
@@ -137,9 +137,9 @@ class NFA {
     return result;
   }
 
-  bool match(const std::string& input) const {
+  bool match(const std::string& s) const {
     state_set reachable = eps_closure({initial_state});
-    for (const char c : input) {
+    for (const char c : s) {
       if (!inputs.contains(c)) {
         return false;
       }

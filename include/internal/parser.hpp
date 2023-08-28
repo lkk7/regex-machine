@@ -55,15 +55,16 @@ class Parser {
 
   ParseResult parse() {
     if (scanner.paren_balance != 0) {
-      return {.nodes = {}, .err_msg = "unbalanced parens"};
+      return {.nodes = {}, .err_msg = "unbalanced parens", .first_node = 0};
     }
     if (scanner.node_charcount == 0) {
-      return {.nodes = {}, .err_msg = "empty regex"};
+      return {.nodes = {}, .err_msg = "empty regex", .first_node = 0};
     }
 
     ParseResult parse_result{
         .nodes = std::vector<ParseNode>(scanner.node_charcount),
         .err_msg = "",
+        .first_node = 0,
     };
 
     // Launch parsing by calling the "outermost" grammar rule
