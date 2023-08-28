@@ -77,7 +77,7 @@ class Parser {
     if (left == -1) [[unlikely]] {
       return -1;
     }
-    if (scanner.peek() != '|') {
+    if (scanner.is_next_escaped() || scanner.peek() != '|') {
       return left;
     }
     scanner.pop();
@@ -97,7 +97,7 @@ class Parser {
     if (left == -1) [[unlikely]] {
       return -1;
     }
-    if (scanner.peek() != '.') {
+    if (scanner.is_next_escaped() || scanner.peek() != '.') {
       return left;
     }
     scanner.pop();
@@ -120,7 +120,8 @@ class Parser {
     }
 
     const char symbol = scanner.peek();
-    if (symbol != '*' && symbol != '?' && symbol != '+') {
+    if (scanner.is_next_escaped() ||
+        (symbol != '*' && symbol != '?' && symbol != '+')) {
       return paren;
     }
     scanner.pop();
@@ -136,12 +137,12 @@ class Parser {
   }
 
   index get_paren(ParseResult& result) {
-    if (scanner.peek() != '(') {
+    if (scanner.is_next_escaped() || scanner.peek() != '(') {
       return get_char(result);
     }
 
     scanner.pop();
-    if (scanner.peek() == ')') [[unlikely]] {
+    if (!scanner.is_next_escaped() && scanner.peek() == ')') [[unlikely]] {
       result.err_msg = "empty () expression";
       return -1;
     }
@@ -149,7 +150,8 @@ class Parser {
     if (or_expr == -1) [[unlikely]] {
       return -1;
     }
-    if (const char c = scanner.pop(); c != ')') [[unlikely]] {
+    if (const char c = scanner.pop(); scanner.is_next_escaped() || c != ')')
+        [[unlikely]] {
       result.err_msg = "')' expected, got char with code" +
                        std::to_string(static_cast<int>(c));
       return -1;

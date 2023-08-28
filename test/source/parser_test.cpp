@@ -99,6 +99,34 @@ TEST_CASE("Parser::parse") {
     REQUIRE_NODE_EQ(result[5], 3, 4, ParseNode::NodeType::OR, '\0');
   }
 
+  SECTION("escaped paren inside parens") {
+    auto parsed = Parser{"((\\)))"}.parse();
+    REQUIRE(parsed.first_node == 0);
+    auto result = parsed.nodes;
+    REQUIRE(result.size() == 1);
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, ')');
+  }
+
+  SECTION("escaped symbols") {
+    auto parsed = Parser{"(\\*\\+)"}.parse();
+    REQUIRE(parsed.first_node == 2);
+    auto result = parsed.nodes;
+    REQUIRE(result.size() == 3);
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '*');
+    REQUIRE_NODE_EQ(result[1], -1, -1, ParseNode::NodeType::CHAR, '+');
+    REQUIRE_NODE_EQ(result[2], 0, 1, ParseNode::NodeType::CONCAT, '\0');
+  }
+
+  SECTION("Escaped symbols due to them not applying to anything") {
+    // ? implicitly escaped
+    auto parsed = Parser{"?*"}.parse();
+    REQUIRE(parsed.first_node == 1);
+    auto result = parsed.nodes;
+    REQUIRE(result.size() == 2);
+    REQUIRE_NODE_EQ(result[0], -1, -1, ParseNode::NodeType::CHAR, '?');
+    REQUIRE_NODE_EQ(result[1], 0, -1, ParseNode::NodeType::KLEENE_STAR, '\0');
+  }
+
   SECTION("logically empty regexes") {
     REQUIRE_NODE_ERR("", "empty regex");
     REQUIRE_NODE_ERR("()", "empty regex");
@@ -111,6 +139,8 @@ TEST_CASE("Parser::parse") {
     REQUIRE_NODE_ERR("((a", "unbalanced parens");
     REQUIRE_NODE_ERR("(", "unbalanced parens");
     REQUIRE_NODE_ERR("abc)", "unbalanced parens");
+    REQUIRE_NODE_ERR("\\(abc)", "unbalanced parens");
+    REQUIRE_NODE_ERR("(abc\\)", "unbalanced parens");
   }
 
   SECTION("empty () expression") {

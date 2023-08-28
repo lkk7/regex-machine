@@ -118,6 +118,62 @@ TEST_CASE("Matcher::match") {
     REQUIRE(!matcher.match("aba"));
   }
 
+  SECTION("ca(k|v)*e") {
+    const Matcher matcher{"ca(k|v)*e"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("cae"));
+    REQUIRE(matcher.match("cae"));
+    REQUIRE(matcher.match("cake"));
+    REQUIRE(matcher.match("cavvvvve"));
+    REQUIRE(!matcher.match(""));
+    REQUIRE(!matcher.match("cape"));
+  }
+
+  SECTION("\\(a") {
+    const Matcher matcher{"\\(a"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("(a"));
+    REQUIRE(!matcher.match(""));
+    REQUIRE(!matcher.match("a"));
+  }
+
+  SECTION("(\\(a)*") {
+    const Matcher matcher{"(\\(a)*"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match(""));
+    REQUIRE(matcher.match("(a"));
+    REQUIRE(matcher.match("(a(a(a"));
+    REQUIRE(!matcher.match("(a)"));
+    REQUIRE(!matcher.match("(ab(a(a"));
+  }
+
+  SECTION("ca(k|v)\\*e") {
+    const Matcher matcher{"ca(k|v)\\*e"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("cak*e"));
+    REQUIRE(matcher.match("cav*e"));
+    REQUIRE(!matcher.match("cae"));
+    REQUIRE(!matcher.match("cae"));
+    REQUIRE(!matcher.match("cake"));
+    REQUIRE(!matcher.match("cavvvvve"));
+    REQUIRE(!matcher.match("cape"));
+  }
+
+  SECTION("\\a") {
+    const Matcher matcher{"\\a"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("a"));
+    REQUIRE(!matcher.match(""));
+  }
+
+  SECTION("(\\(\\))\\?") {
+    const Matcher matcher{R"(((\(\))\?)+)"};
+    REQUIRE(matcher.err_msg.empty());
+    REQUIRE(matcher.match("()?"));
+    REQUIRE(matcher.match("()?()?"));
+    REQUIRE(!matcher.match(""));
+  }
+
   SECTION("errors") {
     // Errors are tested in detail in parsing_test.cpp
     Matcher matcher{"(a"};
@@ -127,6 +183,10 @@ TEST_CASE("Matcher::match") {
     matcher = Matcher{"(())"};
     REQUIRE(!matcher.err_msg.empty());
     matcher = Matcher{"()()"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{"(\\)"};
+    REQUIRE(!matcher.err_msg.empty());
+    matcher = Matcher{"\\()"};
     REQUIRE(!matcher.err_msg.empty());
     matcher = Matcher{""};
     REQUIRE(!matcher.err_msg.empty());
